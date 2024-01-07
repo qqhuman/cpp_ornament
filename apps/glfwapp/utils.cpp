@@ -51,7 +51,7 @@ void savePngImage(const char* filename, uint8_t* img, uint32_t width, uint32_t h
             dst[i] = std::max((uint8_t)0, std::min((uint8_t)255, (uint8_t)val));
         }
     }
-    
+
     stbi_write_png(filename, width, height, numComponents, dst, width * numComponents);
 
     if (isHdr) {

@@ -1,5 +1,5 @@
-#include <hip/hip_runtime.h>
 #include <filesystem>
+#include <hip/hip_runtime.h>
 
 #include "Bvh.hpp"
 #include "PathTracer.hpp"
@@ -157,14 +157,12 @@ Scene& PathTracer::getScene() noexcept
 void PathTracer::getFrameBuffer(uint8_t* dst, size_t size, size_t* retSize)
 {
     auto src = m_targetBuffer.getBuffer().getHipArray();
-    if (dst == nullptr || size == 0)
-    {
-        if (retSize != nullptr)
-        {
+    if (dst == nullptr || size == 0) {
+        if (retSize != nullptr) {
             *retSize = src.sizeInBytes();
         }
         return;
-    } 
+    }
 
     checkHipErrors(hipMemcpy(
         dst,

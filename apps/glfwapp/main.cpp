@@ -1,15 +1,15 @@
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <ornament.hpp>
-#include <filesystem>
 
 #include "App.hpp"
 #include "examples.hpp"
 #include "utils.hpp"
 
-int main(int argc, const char * argv[])
+int main(int argc, const char* argv[])
 {
-    //App app;
+    // App app;
     try {
         auto s = sizeof(glm::mat4);
         std::cout << "Glfw App started..." << std::endl;
@@ -21,7 +21,7 @@ int main(int argc, const char * argv[])
         scene.getState().setFlipY(true);
         std::filesystem::path exeDirPath = std::filesystem::path(argv[0]).parent_path();
         ornament::hip::PathTracer pathTracer(
-            std::move(scene), 
+            std::move(scene),
             exeDirPath.string().c_str());
         pathTracer.render();
         pathTracer.render();
