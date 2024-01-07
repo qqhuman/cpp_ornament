@@ -2,8 +2,8 @@
 
 #include <hip/hip_runtime.h>
 #include <hip/hip_math_constants.h>
-#include "common.hip.h"
-#include "vec_math.hip.h"
+#include "common.hip.hpp"
+#include "vec_math.hip.hpp"
 
 struct RndGen
 {

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include "common.hip.h"
-#include "bvh.hip.h"
-#include "material.hip.h"
-#include "random.hip.h"
-#include "array.hip.h"
-#include "bvh.hip.h"
+#include "common.hip.hpp"
+#include "bvh.hip.hpp"
+#include "material.hip.hpp"
+#include "random.hip.hpp"
+#include "array.hip.hpp"
+#include "bvh.hip.hpp"
 
 struct KernalGlobals
 {

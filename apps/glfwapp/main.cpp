@@ -13,7 +13,7 @@ int main(int argc, const char* argv[])
     try {
         auto s = sizeof(glm::mat4);
         std::cout << "Glfw App started..." << std::endl;
-        ornament::Scene scene = examples::spheres((float)WIDTH / HEIGHT);
+        ornament::Scene scene = examples::lucy_and_spheres_with_textures((float)WIDTH / HEIGHT);
         scene.getState().setResolution({ WIDTH, HEIGHT });
         scene.getState().setDepth(10);
         scene.getState().setIterations(250);

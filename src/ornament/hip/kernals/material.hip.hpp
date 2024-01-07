@@ -1,11 +1,11 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include "common.hip.h"
-#include "array.hip.h"
-#include "random.hip.h"
-#include "ray.hip.h"
-#include "hitrecord.hip.h"
+#include "common.hip.hpp"
+#include "array.hip.hpp"
+#include "random.hip.hpp"
+#include "ray.hip.hpp"
+#include "hitrecord.hip.hpp"
 
 enum MaterialType : uint32_t
 {

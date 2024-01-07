@@ -1,9 +1,9 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include "common.hip.h"
-#include "array.hip.h"
-#include "ray.hip.h"
+#include "common.hip.hpp"
+#include "array.hip.hpp"
+#include "ray.hip.hpp"
 
 
 HOST_DEVICE INLINE float3 transform_point(const Array<float4x4>& transforms, uint32_t transform_id, const float3& point)

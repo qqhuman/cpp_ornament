@@ -10,6 +10,7 @@ namespace utils {
 
 StbImage loadImageFromFile(const char* filename, uint32_t forcedNumComponents)
 {
+    stbi_set_flip_vertically_on_load(true);
     if (stbi_is_hdr(filename)) {
         throw std::runtime_error("hdr loading is not implemented");
     } else if (stbi_is_16_bit(filename)) {

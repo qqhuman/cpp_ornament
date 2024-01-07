@@ -12,18 +12,18 @@ if(NOT HIP_HIPCC_EXECUTABLE)
 endif()
 
 set(HEADERS 
-    array.hip.h
-    bvh.hip.h
-    camera.hip.h
-    common.hip.h
-    constant_params.hip.h
-    hitrecord.hip.h
-    kernal_params.hip.h
-    material.hip.h
-    random.hip.h
-    ray.hip.h
-    transform.hip.h
-    vec_math.hip.h
+    array.hip.hpp
+    bvh.hip.hpp
+    camera.hip.hpp
+    common.hip.hpp
+    constant_params.hip.hpp
+    hitrecord.hip.hpp
+    kernal_params.hip.hpp
+    material.hip.hpp
+    random.hip.hpp
+    ray.hip.hpp
+    transform.hip.hpp
+    vec_math.hip.hpp
 )
 
 SET(SOURCES 

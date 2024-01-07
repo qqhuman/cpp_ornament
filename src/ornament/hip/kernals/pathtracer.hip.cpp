@@ -1,12 +1,12 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_math_constants.h>
-#include "common.hip.h"
-#include "kernal_params.hip.h"
-#include "constants.hip.h"
-#include "hitrecord.hip.h"
-#include "bvh.hip.h"
-#include "transform.hip.h"
-#include "vec_math.hip.h"
+#include "common.hip.hpp"
+#include "kernal_params.hip.hpp"
+#include "constants.hip.hpp"
+#include "hitrecord.hip.hpp"
+#include "bvh.hip.hpp"
+#include "transform.hip.hpp"
+#include "vec_math.hip.hpp"
 
 HOST_DEVICE float4 path_tracing(KernalLocalState *kls);
 HOST_DEVICE float4 post_processing(uint32_t* fb_index, KernalLocalState* kls, float4 accumulated_rgba);

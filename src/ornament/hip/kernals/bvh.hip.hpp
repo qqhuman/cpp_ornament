@@ -1,12 +1,12 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include "array.hip.h"
-#include "common.hip.h"
-#include "ray.hip.h"
-#include "vec_math.hip.h"
-#include "constants.hip.h"
-#include "transform.hip.h"
+#include "array.hip.hpp"
+#include "common.hip.hpp"
+#include "ray.hip.hpp"
+#include "vec_math.hip.hpp"
+#include "constants.hip.hpp"
+#include "transform.hip.hpp"
 
 enum BvhNodeType : uint32_t
 {

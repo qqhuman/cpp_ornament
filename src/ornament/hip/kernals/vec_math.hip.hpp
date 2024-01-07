@@ -28,7 +28,7 @@
 #define make_float4 make_hiprtFloat4
 #endif
 
-#include "common.hip.h"
+#include "common.hip.hpp"
 
 struct float4x4
 {

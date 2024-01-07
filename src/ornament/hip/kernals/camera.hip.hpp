@@ -1,9 +1,9 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include "common.hip.h"
-#include "ray.hip.h"
-#include "random.hip.h"
+#include "common.hip.hpp"
+#include "ray.hip.hpp"
+#include "random.hip.hpp"
 
 struct Camera
 {

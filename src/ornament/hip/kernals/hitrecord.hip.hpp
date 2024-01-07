@@ -1,9 +1,9 @@
 #pragma once
 
 #include <hip/hip_runtime.h>
-#include "common.hip.h"
-#include "ray.hip.h"
-#include "vec_math.hip.h"
+#include "common.hip.hpp"
+#include "ray.hip.hpp"
+#include "vec_math.hip.hpp"
 
 struct HitRecord
 {

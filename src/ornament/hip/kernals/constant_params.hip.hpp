@@ -1,6 +1,6 @@
 #pragma once
 
-#include "camera.hip.h"
+#include "camera.hip.hpp"
 
 struct ConstantParams
 {
