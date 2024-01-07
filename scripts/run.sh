@@ -1,1 +1,1 @@
-./build/apps/glfwapp/glfwapp.exe
+./build/apps/glfwapp/Debug/glfwapp.exe

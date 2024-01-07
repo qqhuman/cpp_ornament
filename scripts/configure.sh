@@ -1,1 +1,1 @@
-cmake -DGLFW_BUILD_DOCS=OFF -S . -B ./build -G "MinGW Makefiles"
+cmake -S . -B ./build -A x64
