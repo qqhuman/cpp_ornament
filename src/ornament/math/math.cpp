@@ -38,11 +38,12 @@ glm::mat4 rotationBetweenVectors(const glm::vec3& a, const glm::vec3& b)
         }
 
         orthogonal = glm::normalize(orthogonal);
-        return glm::toMat4(glm::quat(orthogonal[0], orthogonal[1], orthogonal[2], 0.0f));
+        return glm::toMat4(glm::quat(0.0f, orthogonal[0], orthogonal[1], orthogonal[2]));
     }
 
-    glm::vec3 v = glm::cross(a, b);
-    return glm::toMat4(glm::quat(v[0], v[1], v[2], k + kCosTheta));
+    glm::vec3 v3 = glm::cross(a, b);
+    glm::vec4 v4 = glm::normalize(glm::vec4(v3[0], v3[1], v3[2], k + kCosTheta));
+    return glm::toMat4(glm::quat(v4.w, v4[0], v4[1], v4[2]));
 }
 
 glm::vec2 getSphereTexCoord(const glm::vec3& p)
