@@ -41,15 +41,27 @@ void freeImage(StbImage img)
     stbi_image_free(img.data);
 }
 
+uint8_t floatToByte(float value)
+{
+    if (value >= 1.0f)
+    {
+        return 255;
+    }
+    if (value <= 0.0f)
+    {
+        return 0;
+    }
+    return roundf(value * 255.0f);
+}
+
 void savePngImage(const char* filename, uint8_t* img, uint32_t width, uint32_t height, uint32_t numComponents, bool isHdr)
 {
     uint8_t* dst = img;
     if (isHdr) {
         dst = new uint8_t[width * height * numComponents];
         float* hdrImg = (float*)img;
-        for (size_t i = 0; i < width * height * numComponents; i++) {
-            float val = floor(hdrImg[i] * 255.0f);
-            dst[i] = std::max((uint8_t)0, std::min((uint8_t)255, (uint8_t)val));
+        for (size_t i = 0; i < width * height * numComponents; i++) {;
+            dst[i] = floatToByte(hdrImg[i]);
         }
     }
 

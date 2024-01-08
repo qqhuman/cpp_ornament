@@ -56,10 +56,11 @@ extern "C" __global__ void post_processing_kernal(KernalGlobals kg) {
 }
 
 HOST_DEVICE float4 post_processing(uint32_t* fb_index, KernalLocalState* kls, float4 accumulated_rgba) {
-    float4 rgba = clamp(accumulated_rgba / constant_params.current_iteration, 0.0f, 1.0f);
+    float4 rgba = accumulated_rgba / constant_params.current_iteration;
     rgba.x = pow(rgba.x, constant_params.inverted_gamma);
     rgba.y = pow(rgba.y, constant_params.inverted_gamma);
     rgba.z = pow(rgba.z, constant_params.inverted_gamma);
+    rgba = clamp(rgba, 0.0f, 1.0f);
 
     if (constant_params.flip_y != 0) {
         uint32_t y_flipped = constant_params.height - kls->xy.y - 1;
