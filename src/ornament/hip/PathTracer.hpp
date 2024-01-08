@@ -20,7 +20,6 @@ public:
 private:
     ornament::Scene m_scene;
     hipModule_t m_module;
-    hipFunction_t m_pathTracingAndPostProcessingKernal;
     hipFunction_t m_pathTracingKernal;
     hipFunction_t m_postProcessingKernal;
     buffers::Target m_targetBuffer;

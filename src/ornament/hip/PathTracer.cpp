@@ -37,7 +37,6 @@ PathTracer::PathTracer(Scene scene, const char* kernalsDirPath)
     checkHipErrors(hipModuleLoad(&m_module, kernalsPath.string().c_str()));
     checkHipErrors(hipModuleGetFunction(&m_pathTracingKernal, m_module, "path_tracing_kernal"));
     checkHipErrors(hipModuleGetFunction(&m_postProcessingKernal, m_module, "post_processing_kernal"));
-    checkHipErrors(hipModuleGetFunction(&m_pathTracingAndPostProcessingKernal, m_module, "path_tracing_and_post_processing_kernal"));
 
     m_targetBuffer = buffers::Target(m_scene.getState().getResolution());
     m_textures = buffers::Textures(bvh.getTextures(), prop.texturePitchAlignment);
@@ -174,15 +173,10 @@ void PathTracer::getFrameBuffer(uint8_t* dst, size_t size, size_t* retSize)
 void PathTracer::render()
 {
     uint32_t iterations = m_scene.getState().getIterations();
-    if (iterations > 1) {
-        for (size_t i = 0; i < iterations; i++) {
-            update();
-            launchKernal(m_pathTracingKernal);
-        }
-        launchKernal(m_postProcessingKernal);
-    } else {
+    for (size_t i = 0; i < iterations; i++) {
         update();
-        launchKernal(m_pathTracingAndPostProcessingKernal);
+        launchKernal(m_pathTracingKernal);
     }
+    launchKernal(m_postProcessingKernal);
 }
 }
