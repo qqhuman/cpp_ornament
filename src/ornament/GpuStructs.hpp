@@ -18,43 +18,131 @@ enum BvhNodeType : uint32_t {
     TriangleType = 3,
 };
 
-struct BvhNode {
-    glm::vec3 left_aabb_min_or_v0;
-    uint32_t left_or_custom_id; // bvh node/top of mesh bvh/triangle id
-    glm::vec3 left_aabb_max_or_v1;
-    uint32_t right_or_material_index;
-    glm::vec3 right_aabb_min_or_v2;
-    BvhNodeType node_type;
-    glm::vec3 right_aabb_max_or_v3;
-    uint32_t transform_id;
+#pragma pack(push, 1)
+struct InternalBvhNode 
+{
+    glm::vec3 leftAabbMin;
+    uint32_t leftNodeId;
+    glm::vec3 leftAabbMax;
+    uint32_t rightNodeId;
+    glm::vec3 rightAabbMin;
+    uint32_t _padding;
+    glm::vec3 rightAabbMax;
 };
 
-struct Material {
-    glm::vec3 albedo = { 1.0f, 0.0f, 1.0f };
-    uint32_t albedo_texture_index = std::numeric_limits<uint32_t>::max();
+struct SphereBvhNode 
+{
+    uint32_t materialId;
+    uint32_t transformId;
+};
+
+struct MeshBvhNode
+{
+    uint32_t materialId;
+    uint32_t transformId;
+    uint32_t blasNodeId;
+};
+
+struct TriangleBvhNode
+{
+    glm::vec3 v0;
+    uint32_t triangleId;
+    glm::vec3 v1;
+    uint32_t _padding;
+    glm::vec3 v2;
+};
+#pragma pack(pop)
+
+struct BvhNode
+{
+    union {
+        InternalBvhNode internalNode;
+        SphereBvhNode sphereNode;
+        MeshBvhNode meshNode;
+        TriangleBvhNode triangleNode;
+    };
+    BvhNodeType type;
+};
+
+#pragma pack(push, 1)
+struct Lambertian
+{
+    glm::vec3 albedo;
+    uint32_t albedoTextureId;
+};
+
+struct Metal
+{
+    glm::vec3 albedo;
+    uint32_t albedoTextureId;
     float fuzz;
+};
+
+struct Dielectric
+{
     float ior;
-    ornament::MaterialType type;
-    uint32_t _padding = 0;
+};
+
+struct DiffuseLight
+{
+    glm::vec3 albedo;
+    uint32_t albedoTextureId;
+};
+#pragma pack(pop)
+
+struct Material {
+    union {
+        Lambertian lambertian;
+        Metal metal;
+        Dielectric dielectric;
+        DiffuseLight diffuseLight;
+    };
+    MaterialType type;
+    uint32_t _padding[2];
 
     Material(const ornament::Material& material)
     {
-        fuzz = material.fuzz;
-        ior = material.ior;
-        type = material.type;
-
+        glm::vec3 albedo = {1.0f, 0.0f, 1.0f};
+        uint32_t albedoTextureId = std::numeric_limits<uint32_t>::max();
         switch (material.albedo.type) {
         case VectorType: {
             albedo = material.albedo.vector;
             break;
         }
         case TextureType: {
-            albedo_texture_index = material.albedo.texture->textureId.value();
+            albedoTextureId = material.albedo.texture->textureId.value();
             break;
         }
         default: {
             break;
         }
+        }
+
+        type = material.type;
+        switch (material.type)
+        {
+        case ornament::Lambertian: {
+            lambertian.albedo = albedo;
+            lambertian.albedoTextureId = albedoTextureId;
+            break;
+        }
+        case ornament::Metal: {
+            metal.albedo = albedo;
+            metal.albedoTextureId = albedoTextureId;
+            metal.fuzz = material.fuzz;
+            break;
+        }
+        case ornament::Dielectric: {
+            dielectric.ior = material.ior;
+            break;
+        }
+        case ornament::DiffuseLight: {
+            diffuseLight.albedo = albedo;
+            diffuseLight.albedoTextureId = albedoTextureId;
+            break;
+        }
+        default:
+            break;
         }
     }
 };

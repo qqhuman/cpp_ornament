@@ -10,24 +10,56 @@
 
 enum BvhNodeType : uint32_t
 {
-    InternalNode = 0,
-    Sphere = 1,
-    Mesh = 2,
-    Triangle = 3,
+    InternalNodeType = 0,
+    SphereType = 1,
+    MeshType = 2,
+    TriangleType = 3,
 };
+
+#pragma pack(push, 1)
+struct InternalNode 
+{
+    float3 leftAabbMin;
+    uint32_t leftNodeId;
+    float3 leftAabbMax;
+    uint32_t rightNodeId;
+    float3 rightAabbMin;
+    uint32_t _padding;
+    float3 rightAabbMax;
+};
+
+struct Sphere
+{
+    uint32_t materialId;
+    uint32_t transformId;
+};
+
+struct Mesh
+{
+    uint32_t materialId;
+    uint32_t transformId;
+    uint32_t blasNodeId;
+};
+
+struct Triangle
+{
+    float3 v0;
+    uint32_t triangleId;
+    float3 v1;
+    uint32_t _padding;
+    float3 v2;
+};
+#pragma pack(pop)
 
 struct BvhNode
 {
-    float3 left_aabb_min_or_v0;
-    uint32_t left_or_custom_id; // internal left node id / mesh id / triangle id, sphere id
-    float3 left_aabb_max_or_v1;
-    uint32_t right_or_material_index;
-    float3 right_aabb_min_or_v2;
-    BvhNodeType node_type; // 0 internal node, 1 mesh, 2 triangle, 3 sphere
-    float3 right_aabb_max_or_v3;
-    // inverse transform: transform_id * 2
-    // model transform:  transform_id * 2 + 1
-    uint32_t transform_id;
+    union {
+        InternalNode internalNode;
+        Sphere sphereNode;
+        Mesh meshNode;
+        Triangle triangleNode;
+    };
+    BvhNodeType type;
 };
 
 struct Bvh
@@ -145,7 +177,7 @@ struct Bvh
     HOST_DEVICE bool hit(
         const Ray& not_transformed_ray,
         float* closest_t, 
-        uint32_t* closest_material_index,
+        uint32_t* closest_material_id,
         BvhNodeType* closest_bvh_node_type,
         uint32_t* closest_inverted_transform_id,
         uint32_t* closest_tri_id,
@@ -170,34 +202,34 @@ struct Bvh
 
         float3 not_transformed_invdir = invdir;
         float3 not_transformed_oxinvdir = oxinvdir;
-        uint32_t material_index;
+        uint32_t material_id;
         uint32_t inverted_transform_id;
         while (stack_top >= 0)
         {
             BvhNode node = traverse_tlas ? tlas_nodes[addr] : blas_nodes[addr];
-            switch (node.node_type)
+            switch (node.type)
             {
-                case InternalNode: 
+                case InternalNodeType: 
                 {
-                    float2 left = aabb_hit(node.left_aabb_min_or_v0, node.left_aabb_max_or_v1, invdir, oxinvdir, t_min, t_max);
-                    float2 right = aabb_hit(node.right_aabb_min_or_v2, node.right_aabb_max_or_v3, invdir, oxinvdir, t_min, t_max);
+                    float2 left = aabb_hit(node.internalNode.leftAabbMin, node.internalNode.leftAabbMax, invdir, oxinvdir, t_min, t_max);
+                    float2 right = aabb_hit(node.internalNode.rightAabbMin, node.internalNode.rightAabbMax, invdir, oxinvdir, t_min, t_max);
                     
                     if (left.x <= left.y) 
                     {
                         stack_top++;
-                        node_stack[stack_top] = node.left_or_custom_id;
+                        node_stack[stack_top] = node.internalNode.leftNodeId;
                     }
 
                     if (right.x <= right.y) 
                     {
                         stack_top++;
-                        node_stack[stack_top] = node.right_or_material_index;
+                        node_stack[stack_top] = node.internalNode.rightNodeId;
                     }
                     break;
                 }
-                case Sphere: 
+                case SphereType: 
                 {
-                    inverted_transform_id = node.transform_id * 2;
+                    inverted_transform_id = node.sphereNode.transformId * 2;
                     Ray transformed_ray = transform_ray(transforms, inverted_transform_id, ray);
                     float t = sphere_hit(transformed_ray, t_min, t_max);
                     if (t < t_max) 
@@ -205,13 +237,13 @@ struct Bvh
                         hit_anything = true;
                         t_max = t;
                         *closest_t = t;
-                        *closest_material_index = node.right_or_material_index;
-                        *closest_bvh_node_type = Sphere;
+                        *closest_material_id = node.sphereNode.materialId;
+                        *closest_bvh_node_type = SphereType;
                         *closest_inverted_transform_id = inverted_transform_id;
                     }
                     break;
                 }
-                case Mesh: 
+                case MeshType: 
                 {
                     // push signal to restore transformation after finshing mesh bvh
                     traverse_tlas = false;
@@ -220,23 +252,23 @@ struct Bvh
 
                     // push mesh bvh
                     stack_top++;
-                    node_stack[stack_top] = node.left_or_custom_id;
+                    node_stack[stack_top] = node.meshNode.blasNodeId;
 
-                    inverted_transform_id = node.transform_id * 2;
-                    material_index = node.right_or_material_index;
+                    inverted_transform_id = node.meshNode.transformId * 2;
+                    material_id = node.meshNode.materialId;
                     ray = transform_ray(transforms, inverted_transform_id, ray);
                     invdir = safe_invdir(ray.direction);
                     oxinvdir = -ray.origin * invdir;
                     break;
                 }
-                case Triangle: 
+                case TriangleType: 
                 {
                     float2 uv;
                     float t = triangle_hit(
                         ray, 
-                        node.left_aabb_min_or_v0,
-                        node.left_aabb_max_or_v1,
-                        node.right_aabb_min_or_v2,
+                        node.triangleNode.v0,
+                        node.triangleNode.v1,
+                        node.triangleNode.v2,
                         t_min, 
                         t_max,
                         &uv
@@ -247,10 +279,10 @@ struct Bvh
                         hit_anything = true;
                         t_max = t;
                         *closest_t = t;
-                        *closest_material_index = material_index;
-                        *closest_bvh_node_type = Mesh;
+                        *closest_material_id = material_id;
+                        *closest_bvh_node_type = MeshType;
                         *closest_inverted_transform_id = inverted_transform_id;
-                        *closest_tri_id = node.left_or_custom_id * 3;
+                        *closest_tri_id = node.triangleNode.triangleId * 3;
                         *closest_uv = uv;
                     }
                     break;

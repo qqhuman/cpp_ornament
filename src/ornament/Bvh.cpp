@@ -178,11 +178,11 @@ gpu_structs::BvhNode Bvh::buildBvhBlasRecursive(std::vector<Triangle>& leafs, si
     } else if (leafsSize == 1) {
         Triangle t = leafs[start];
         gpu_structs::BvhNode node;
-        node.left_aabb_min_or_v0 = t.v0;
-        node.left_aabb_max_or_v1 = t.v1;
-        node.right_aabb_min_or_v2 = t.v2;
-        node.left_or_custom_id = t.triangleIndex;
-        node.node_type = gpu_structs::TriangleType;
+        node.type = gpu_structs::TriangleType;
+        node.triangleNode.v0 = t.v0;
+        node.triangleNode.v1 = t.v1;
+        node.triangleNode.v2 = t.v2;
+        node.triangleNode.triangleId = t.triangleIndex;
         return node;
     } else {
         int axis = randomi32(0, 2);
@@ -205,13 +205,13 @@ gpu_structs::BvhNode Bvh::buildBvhBlasRecursive(std::vector<Triangle>& leafs, si
         uint32_t rightId = m_blasNodes.size() - 1;
 
         gpu_structs::BvhNode node;
-        node.left_aabb_min_or_v0 = leftAabb.min();
-        node.left_or_custom_id = leftId;
-        node.left_aabb_max_or_v1 = leftAabb.max();
-        node.right_or_material_index = rightId;
-        node.right_aabb_min_or_v2 = rightAabb.min();
-        node.node_type = gpu_structs::InternalNodeType;
-        node.right_aabb_max_or_v3 = rightAabb.max();
+        node.type = gpu_structs::InternalNodeType;
+        node.internalNode.leftAabbMin = leftAabb.min();
+        node.internalNode.leftNodeId = leftId;
+        node.internalNode.leftAabbMax = leftAabb.max();
+        node.internalNode.rightNodeId = rightId;
+        node.internalNode.rightAabbMin = rightAabb.min();
+        node.internalNode.rightAabbMax = rightAabb.max();
         return node;
     }
 }
@@ -230,11 +230,9 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
             appendTransform(obj->transform);
             uint32_t transformId = m_transforms.size() / 2 - 1;
             gpu_structs::BvhNode node;
-            node.left_aabb_min_or_v0 = obj->aabb.min();
-            node.left_aabb_max_or_v1 = obj->aabb.max();
-            node.right_or_material_index = getMaterialIndex(*obj->material);
-            node.node_type = gpu_structs::SphereType;
-            node.transform_id = transformId;
+            node.type = gpu_structs::SphereType;
+            node.sphereNode.materialId = getMaterialIndex(*obj->material);
+            node.sphereNode.transformId = transformId;
             return node;
         }
         case MeshType: {
@@ -243,12 +241,10 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
             appendTransform(obj->transform);
             uint32_t transformId = m_transforms.size() / 2 - 1;
             gpu_structs::BvhNode node;
-            node.left_aabb_min_or_v0 = obj->aabb.min();
-            node.left_aabb_max_or_v1 = obj->aabb.max();
-            node.right_or_material_index = getMaterialIndex(*obj->material);
-            node.left_or_custom_id = obj->bvhId.value();
-            node.node_type = gpu_structs::MeshType;
-            node.transform_id = transformId;
+            node.type = gpu_structs::MeshType;
+            node.meshNode.materialId = getMaterialIndex(*obj->material);
+            node.meshNode.transformId = transformId;
+            node.meshNode.blasNodeId = obj->bvhId.value();
             return node;
         }
         case MeshInstanceType: {
@@ -257,12 +253,10 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
             appendTransform(obj->transform);
             uint32_t transformId = m_transforms.size() / 2 - 1;
             gpu_structs::BvhNode node;
-            node.left_aabb_min_or_v0 = obj->aabb.min();
-            node.left_aabb_max_or_v1 = obj->aabb.max();
-            node.right_or_material_index = getMaterialIndex(*obj->material);
-            node.left_or_custom_id = obj->mesh->bvhId.value();
-            node.node_type = gpu_structs::MeshType;
-            node.transform_id = transformId;
+            node.type = gpu_structs::MeshType;
+            node.meshNode.materialId = getMaterialIndex(*obj->material);
+            node.meshNode.transformId = transformId;
+            node.meshNode.blasNodeId = obj->mesh->bvhId.value();
             return node;
         }
         default: {
@@ -290,13 +284,13 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
         uint32_t rightId = m_tlasNodes.size() - 1;
 
         gpu_structs::BvhNode node;
-        node.left_aabb_min_or_v0 = leftAabb.min();
-        node.left_or_custom_id = leftId;
-        node.left_aabb_max_or_v1 = leftAabb.max();
-        node.right_or_material_index = rightId;
-        node.right_aabb_min_or_v2 = rightAabb.min();
-        node.node_type = gpu_structs::InternalNodeType;
-        node.right_aabb_max_or_v3 = rightAabb.max();
+        node.type = gpu_structs::InternalNodeType;
+        node.internalNode.leftAabbMin = leftAabb.min();
+        node.internalNode.leftNodeId = leftId;
+        node.internalNode.leftAabbMax = leftAabb.max();
+        node.internalNode.rightNodeId = rightId;
+        node.internalNode.rightAabbMin = rightAabb.min();
+        node.internalNode.rightAabbMax = rightAabb.max();
         return node;
     }
 }

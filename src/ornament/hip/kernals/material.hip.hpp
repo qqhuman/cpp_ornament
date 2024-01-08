@@ -9,20 +9,48 @@
 
 enum MaterialType : uint32_t
 {
-    Lambertian = 0,
-    Metal = 1,
-    Dielectric = 2,
-    DiffuseLight = 3,
+    LambertianType = 0,
+    MetalType = 1,
+    DielectricType = 2,
+    DiffuseLightType = 3,
 };
+
+#pragma pack(push, 1)
+struct Lambertian
+{
+    float3 albedo;
+    uint32_t albedoTextureId;
+};
+
+struct Metal
+{
+    float3 albedo;
+    uint32_t albedoTextureId;
+    float fuzz;
+};
+
+struct Dielectric
+{
+    float ior;
+};
+
+struct DiffuseLight
+{
+    float3 albedo;
+    uint32_t albedoTextureId;
+};
+#pragma pack(pop)
 
 struct Material 
 {
-    float3 albedo;
-    uint32_t albedo_texture_index;
-    float fuzz;
-    float ior;
-    MaterialType material_type;
-    uint32_t _padding;
+    union {
+        Lambertian lambertian;
+        Metal metal;
+        Dielectric dielectric;
+        DiffuseLight diffuseLight;
+    };
+    MaterialType type;
+    uint32_t _padding[2];
     
     #define EPS 1E-8f
     #define NEAR_ZERO(e) abs(e.x) < EPS && abs(e.y) < EPS && abs(e.z) < EPS
@@ -51,25 +79,25 @@ struct Material
         }
 
         *scattered = Ray(hit.p, scattered_direction);
-        *attenuation = get_color(textures, albedo, albedo_texture_index, hit.uv);
+        *attenuation = get_color(textures, lambertian.albedo, lambertian.albedoTextureId, hit.uv);
         return true;
     }
 
     HOST_DEVICE bool metal_scatter(const Ray& r, const HitRecord& hit, RndGen& rnd, const Array<hipTextureObject_t>& textures, float3* attenuation, Ray* scattered)
     {
-        float3 scattered_direction = reflect(normalize(r.direction), hit.normal) + fuzz * rnd.gen_in_unit_sphere();
+        float3 scattered_direction = reflect(normalize(r.direction), hit.normal) + metal.fuzz * rnd.gen_in_unit_sphere();
         *scattered = Ray(hit.p, scattered_direction);
-        *attenuation = get_color(textures, albedo, albedo_texture_index, hit.uv);
+        *attenuation = get_color(textures, metal.albedo, metal.albedoTextureId, hit.uv);
         return true;
     }
 
     HOST_DEVICE bool dielectric_scatter(const Ray& r, const HitRecord& hit, RndGen& rnd, float3* attenuation, Ray* scattered)
     {
         *attenuation = make_float3(1.0f);
-        float refraction_ratio = ior;
+        float refraction_ratio = dielectric.ior;
         if (hit.front_face)
         {
-            refraction_ratio = 1.0f / ior;
+            refraction_ratio = 1.0f / dielectric.ior;
         }
 
         float3 unit_direction = normalize(r.direction);
@@ -86,20 +114,20 @@ struct Material
 
     HOST_DEVICE bool scatter(const Ray& r, const HitRecord& hit, RndGen& rnd, const Array<hipTextureObject_t>& textures, float3* attenuation, Ray* scattered)
     {
-        switch(material_type) 
+        switch(type) 
         {
-            case Lambertian: return lambertian_scatter(r, hit, rnd, textures, attenuation, scattered);
-            case Metal: return metal_scatter(r, hit, rnd, textures, attenuation, scattered);
-            case Dielectric: return dielectric_scatter(r, hit, rnd, attenuation, scattered);
+            case LambertianType: return lambertian_scatter(r, hit, rnd, textures, attenuation, scattered);
+            case MetalType: return metal_scatter(r, hit, rnd, textures, attenuation, scattered);
+            case DielectricType: return dielectric_scatter(r, hit, rnd, attenuation, scattered);
             default: return false;
         }
     }
 
     HOST_DEVICE float3 emit(const HitRecord& hit, const Array<hipTextureObject_t>& textures)
     {
-        switch(material_type) 
+        switch(type) 
         {
-            case DiffuseLight: return get_color(textures, albedo, albedo_texture_index, hit.uv);
+            case DiffuseLightType: return get_color(textures, diffuseLight.albedo, diffuseLight.albedoTextureId, hit.uv);
             default: return make_float3(0.0f);
         }
     }
