@@ -4,6 +4,9 @@
 #include "common.hip.hpp"
 #include "vec_math.hip.hpp"
 
+namespace ornament {
+namespace kernals
+{
 struct Ray
 {
     float3 origin;
@@ -17,3 +20,5 @@ struct Ray
         return origin + t * direction;
     }
 };
+}
+}

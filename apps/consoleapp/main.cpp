@@ -11,7 +11,7 @@ const uint32_t HEIGHT = 600;
 int main(int argc, const char* argv[])
 {
     std::cout << "Console App started..." << std::endl;
-    ornament::Scene scene = examples::lucy_and_spheres_with_textures((float)WIDTH / HEIGHT);
+    ornament::Scene scene = examples::spheres_and_sphere_meshes((float)WIDTH / HEIGHT);
     scene.getState().setResolution({ WIDTH, HEIGHT });
     scene.getState().setDepth(10);
     scene.getState().setIterations(250);

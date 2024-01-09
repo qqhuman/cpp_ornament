@@ -5,6 +5,7 @@
 #include "PathTracer.hpp"
 #include "buffers.hpp"
 #include "hip_helper.hpp"
+#include "../global_structs_helper.hpp"
 
 namespace ornament::hip {
 PathTracer::PathTracer(Scene scene, const char* kernalsDirPath)
@@ -35,12 +36,13 @@ PathTracer::PathTracer(Scene scene, const char* kernalsDirPath)
     auto kernalsPath = std::filesystem::path(kernalsDirPath) / std::filesystem::path("ornament_kernals.co");
     printf("      kernals path = %s\n", kernalsPath.string().c_str());
     checkHipErrors(hipModuleLoad(&m_module, kernalsPath.string().c_str()));
-    checkHipErrors(hipModuleGetFunction(&m_pathTracingKernal, m_module, "path_tracing_kernal"));
-    checkHipErrors(hipModuleGetFunction(&m_postProcessingKernal, m_module, "post_processing_kernal"));
+    checkHipErrors(hipModuleGetFunction(&m_pathTracingKernal, m_module, "pathTracingKernal"));
+    checkHipErrors(hipModuleGetFunction(&m_postProcessingKernal, m_module, "postProcessingKernal"));
 
-    m_targetBuffer = buffers::Target(m_scene.getState().getResolution());
+    uint2 resolution = {m_scene.getState().getResolution().x, m_scene.getState().getResolution().y};
+    m_targetBuffer = buffers::Target(resolution);
     m_textures = buffers::Textures(bvh.getTextures(), prop.texturePitchAlignment);
-    m_constantParams = buffers::Global<gpu_structs::ConstantParams>("constant_params", m_module);
+    m_constantParams = buffers::Global<kernals::ConstantParams>("constantParams", m_module);
     m_materials = buffers::Array(bvh.getMaterials());
     m_normals = buffers::Array(bvh.getNormals());
     m_normalIndices = buffers::Array(bvh.getNormalIndices());
@@ -75,9 +77,9 @@ void PathTracer::update()
     }
 
     state.nextIteration();
-    buffers::Global<gpu_structs::ConstantParams>::copyHToD(
+    buffers::Global<kernals::ConstantParams>::copyHToD(
         m_constantParams,
-        gpu_structs::ConstantParams(camera, state, m_textures.getCount()));
+        kernals::toKernalConstantParams(camera, state, m_textures.getCount()));
 
     camera.setDirty(false);
     state.setDirty(false);
@@ -86,42 +88,25 @@ void PathTracer::update()
 void PathTracer::launchKernal(hipFunction_t kernal)
 {
     struct KernalArgs {
-        struct {
-            struct {
-                buffers::HipArray<gpu_structs::BvhNode> tlas_nodes;
-                buffers::HipArray<gpu_structs::BvhNode> blas_nodes;
-                buffers::HipArray<gpu_structs::Normal> normals;
-                buffers::HipArray<uint32_t> normal_indices;
-                buffers::HipArray<gpu_structs::Uv> uvs;
-                buffers::HipArray<uint32_t> uv_indices;
-                buffers::HipArray<gpu_structs::Transform> transforms;
-            } bvh;
-            buffers::HipArray<gpu_structs::Material> materials;
-            buffers::HipArray<hipTextureObject_t> textures;
-            hipDeviceptr_t framebuffer;
-            hipDeviceptr_t accumulation_buffer;
-            hipDeviceptr_t rng_seed_buffer;
-            uint32_t pixel_count;
-        } kg;
+        kernals::KernalBuffers kbuffs;
     };
 
     KernalArgs args = {
-        .kg = {
+        .kbuffs = {
             .bvh = {
-                .tlas_nodes = m_tlasNodes.getHipArray(),
-                .blas_nodes = m_blasNodes.getHipArray(),
+                .tlasNodes = m_tlasNodes.getHipArray(),
+                .blasNodes = m_blasNodes.getHipArray(),
                 .normals = m_normals.getHipArray(),
-                .normal_indices = m_normalIndices.getHipArray(),
+                .normalIndices = m_normalIndices.getHipArray(),
                 .uvs = m_uvs.getHipArray(),
-                .uv_indices = m_uvIndices.getHipArray(),
+                .uvIndices = m_uvIndices.getHipArray(),
                 .transforms = m_transforms.getHipArray(),
             },
             .materials = m_materials.getHipArray(),
             .textures = m_textures.getHipArray(),
-            .framebuffer = m_targetBuffer.getBuffer().getHipArray().dptr,
-            .accumulation_buffer = m_targetBuffer.getAccumelationBuffer().getHipArray().dptr,
-            .rng_seed_buffer = m_targetBuffer.getRngStateBuffer().getHipArray().dptr,
-            .pixel_count = m_targetBuffer.pixelCount(),
+            .frameBuffer = m_targetBuffer.getBuffer().getHipArray(),
+            .accumulationBuffer = m_targetBuffer.getAccumelationBuffer().getHipArray(),
+            .rngSeedBuffer = m_targetBuffer.getRngStateBuffer().getHipArray(),
         },
     };
 
@@ -165,7 +150,7 @@ void PathTracer::getFrameBuffer(uint8_t* dst, size_t size, size_t* retSize)
 
     checkHipErrors(hipMemcpy(
         dst,
-        src.dptr,
+        src.ptr,
         size,
         hipMemcpyDeviceToHost));
 }

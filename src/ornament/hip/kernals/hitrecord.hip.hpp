@@ -5,26 +5,32 @@
 #include "ray.hip.hpp"
 #include "vec_math.hip.hpp"
 
+namespace ornament {
+namespace kernals {
+
 struct HitRecord
 {
     float3 p;
-    uint32_t material_index;
+    uint32_t materialId;
     float3 normal;
     float t;
     float2 uv;
-    bool front_face;
+    bool frontFace;
 
-    HOST_DEVICE void set_face_normal(const Ray& r, const float3& outward_normal)
+    HOST_DEVICE void setFaceNormal(const Ray& r, const float3& outwardNormal)
     {
-        if (dot(r.direction, outward_normal) > 0.0f)
+        if (dot(r.direction, outwardNormal) > 0.0f)
         {
-            normal = -outward_normal;
-            front_face = false;
+            normal = -outwardNormal;
+            frontFace = false;
         } 
         else
         {
-            normal = outward_normal;
-            front_face = true;
+            normal = outwardNormal;
+            frontFace = true;
         }
     }
 };
+
+}
+}

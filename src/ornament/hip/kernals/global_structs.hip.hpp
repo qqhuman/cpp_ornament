@@ -2,18 +2,29 @@
 
 #include <hip/hip_runtime.h>
 #include "vec_math.hip.hpp"
-#include "Array.hip.hpp"
 
-namespace ornament::kernals {
+namespace ornament {
+namespace kernals {
+
 template <typename T> 
 struct Array
 {
     T* ptr;
     uint32_t len;
 
-    HOST_DEVICE INLINE T operator[](uint32_t index) const
+    HOST_DEVICE INLINE const T& operator[](uint32_t index) const
     {
         return ptr[index];
+    }
+
+    HOST_DEVICE INLINE T& operator[](uint32_t index)
+    {
+        return ptr[index];
+    }
+
+    size_t sizeInBytes()
+    {
+        return len * sizeof(T);
     }
 };
 
@@ -168,4 +179,6 @@ struct KernalBuffers
     Array<float4> accumulationBuffer;
     Array<uint32_t> rngSeedBuffer;
 };
+
+}
 }

@@ -1,79 +1,79 @@
 #include <hip/hip_runtime.h>
 #include <hip/hip_math_constants.h>
-#include "common.hip.hpp"
-#include "kernal_params.hip.hpp"
-#include "constants.hip.hpp"
-#include "hitrecord.hip.hpp"
-#include "bvh.hip.hpp"
-#include "transform.hip.hpp"
 #include "vec_math.hip.hpp"
+#include "global_structs.hip.hpp"
+#include "random.hip.hpp"
+#include "camera.hip.hpp"
+#include "bvh.hip.hpp"
+#include "material.hip.hpp"
+#include "hitrecord.hip.hpp"
+#include "transform.hip.hpp"
 
-extern "C" __global__ void path_tracing_kernal(KernalGlobals kg) {
-    uint32_t global_id = blockDim.x * blockIdx.x + threadIdx.x;
-    if (global_id >= kg.pixel_count) {
+using namespace ornament::kernals;
+
+__constant__ ConstantParams constantParams;
+
+extern "C" __global__ void pathTracingKernal(KernalBuffers kbuffs) {
+    uint32_t globalId = blockDim.x * blockIdx.x + threadIdx.x;
+    if (globalId >= kbuffs.frameBuffer.len) {
         return;
     }
 
-    KernalLocalState kls(kg, make_uint2(constant_params.width, constant_params.height), global_id);
-    
-    float u = ((float)kls.xy.x + kls.rnd.gen_float()) / (constant_params.width - 1);
-    float v = ((float)kls.xy.y + kls.rnd.gen_float()) / (constant_params.height - 1);
+    uint2 globalXY = make_uint2(globalId % constantParams.width, globalId / constantParams.width);
+    RndGen rnd(kbuffs.rngSeedBuffer[globalId]);
 
-    Ray ray = constant_params.camera.get_ray(&kls.rnd, u, v);
-    float3 final_color = make_float3(1.0f);
+    float u = ((float)globalXY.x + rnd.genFloat()) / (constantParams.width - 1);
+    float v = ((float)globalXY.y + rnd.genFloat()) / (constantParams.height - 1);
 
-    for (int i = 0; i < constant_params.depth; i += 1)
+    Ray ray = cameraGetRay(constantParams.camera, rnd, u, v);
+    float3 finalColor = make_float3(1.0f);
+
+    for (int i = 0; i < constantParams.depth; i += 1)
     {
-        float t;
-        uint32_t material_index;
-        BvhNodeType bvh_node_type;
-        uint32_t inverted_transform_id;
-        uint32_t tri_id;
-        float2 uv;
-        if (!kls.kg.bvh.hit(ray, &t, &material_index, &bvh_node_type, &inverted_transform_id, &tri_id, &uv)) {
-            float3 unit_direction = normalize(ray.direction);
-            float tt = 0.5f * (unit_direction.y + 1.0f);
-            final_color = final_color * ((1.0f - tt) * make_float3(1.0f) + tt * make_float3(0.5f, 0.7f, 1.0f));
-            //final_color = make_float3(0.0f);
+        BvhHitResult bvhHitResult;
+        if (!bvhHit(kbuffs.bvh, ray, constantParams.rayCastEpsilon, &bvhHitResult)) {
+            float3 unitDirection = normalize(ray.direction);
+            float tt = 0.5f * (unitDirection.y + 1.0f);
+            finalColor = finalColor * ((1.0f - tt) * make_float3(1.0f) + tt * make_float3(0.5f, 0.7f, 1.0f));
+            //finalColor = make_float3(0.0f);
             break;
         }
 
-        uint32_t transform_id = inverted_transform_id + 1;
+        uint32_t transformId = bvhHitResult.invertedTransformId + 1;
         HitRecord hit;
-        hit.t = t;
-        hit.p = ray.at(t);
-        hit.material_index = material_index;
-        switch (bvh_node_type)
+        hit.t = bvhHitResult.t;
+        hit.p = ray.at(bvhHitResult.t);
+        hit.materialId = bvhHitResult.materialId;
+        switch (bvhHitResult.nodeType)
         {
-            case Sphere: 
+            case SphereType: 
             {
-                float3 center = transform_point(kls.kg.bvh.transforms, transform_id, make_float3(0.0f));
-                float3 outward_normal = normalize(hit.p - center);
-                float theta = acos(-outward_normal.y);
-                float phi = atan2(-outward_normal.z, outward_normal.x) + HIP_PI_F;
+                float3 center = transformPoint(kbuffs.bvh.transforms[transformId], make_float3(0.0f));
+                float3 outwardNormal = normalize(hit.p - center);
+                float theta = acos(-outwardNormal.y);
+                float phi = atan2(-outwardNormal.z, outwardNormal.x) + HIP_PI_F;
                 hit.uv = make_float2(phi / (2.0f * HIP_PI_F), theta / HIP_PI_F);
-                hit.set_face_normal(ray, outward_normal);
+                hit.setFaceNormal(ray, outwardNormal);
                 break;
             }
-            case Mesh: 
+            case MeshType: 
             {
-                float4 n0 = kls.kg.bvh.normals[kls.kg.bvh.normal_indices[tri_id]];
-                float4 n1 = kls.kg.bvh.normals[kls.kg.bvh.normal_indices[tri_id + 1]];
-                float4 n2 = kls.kg.bvh.normals[kls.kg.bvh.normal_indices[tri_id + 2]];
+                float4 n0 = kbuffs.bvh.normals[kbuffs.bvh.normalIndices[bvhHitResult.triangleId]];
+                float4 n1 = kbuffs.bvh.normals[kbuffs.bvh.normalIndices[bvhHitResult.triangleId + 1]];
+                float4 n2 = kbuffs.bvh.normals[kbuffs.bvh.normalIndices[bvhHitResult.triangleId + 2]];
 
-                float2 uv0 = kls.kg.bvh.uvs[kls.kg.bvh.uv_indices[tri_id]];
-                float2 uv1 = kls.kg.bvh.uvs[kls.kg.bvh.uv_indices[tri_id + 1]];
-                float2 uv2 = kls.kg.bvh.uvs[kls.kg.bvh.uv_indices[tri_id + 2]];
+                float2 uv0 = kbuffs.bvh.uvs[kbuffs.bvh.uvIndices[bvhHitResult.triangleId]];
+                float2 uv1 = kbuffs.bvh.uvs[kbuffs.bvh.uvIndices[bvhHitResult.triangleId + 1]];
+                float2 uv2 = kbuffs.bvh.uvs[kbuffs.bvh.uvIndices[bvhHitResult.triangleId + 2]];
 
-                float w = 1.0f - uv.x - uv.y;
-                float4 normal = w * n0 + uv.x * n1 + uv.y * n2;
-                hit.uv = w * uv0 + uv.x * uv1 + uv.y * uv2;
-                float3 outward_normal = normalize(transform_normal(
-                    kls.kg.bvh.transforms,
-                    inverted_transform_id, 
+                float w = 1.0f - bvhHitResult.triangleBarycentricUV.x - bvhHitResult.triangleBarycentricUV.y;
+                float4 normal = w * n0 + bvhHitResult.triangleBarycentricUV.x * n1 + bvhHitResult.triangleBarycentricUV.y * n2;
+                hit.uv = w * uv0 + bvhHitResult.triangleBarycentricUV.x * uv1 + bvhHitResult.triangleBarycentricUV.y * uv2;
+                float3 outwardNormal = normalize(transformNormal(
+                    kbuffs.bvh.transforms[bvhHitResult.invertedTransformId],
                     make_float3(normal)
                 ));
-                hit.set_face_normal(ray, outward_normal);
+                hit.setFaceNormal(ray, outwardNormal);
                 break;
             }
             default: { break; }
@@ -81,48 +81,43 @@ extern "C" __global__ void path_tracing_kernal(KernalGlobals kg) {
 
         float3 attenuation;
         Ray scattered;
-        Material material = kls.kg.materials[hit.material_index];
-        if (material.scatter(ray, hit, kls.rnd, kls.kg.textures, &attenuation, &scattered)) {
+        Material material = kbuffs.materials[hit.materialId];
+        if (materialScatter(material, ray, hit, rnd, kbuffs.textures, &attenuation, &scattered)) {
             ray = scattered;
-            final_color = final_color * attenuation;
+            finalColor = finalColor * attenuation;
         } else {
-            final_color = final_color * material.emit(hit, kls.kg.textures);
+            finalColor = finalColor * materialEmit(material, hit, kbuffs.textures);
             break;
         }
     }
     
-    float4 accumulated_rgba = make_float4(final_color, 1.0f);
-    if (constant_params.current_iteration > 1.0f) {
-        accumulated_rgba = kls.kg.accumulation_buffer[kls.global_invocation_id] + accumulated_rgba;
+    float4 accumulatedRgba = make_float4(finalColor, 1.0f);
+    if (constantParams.currentIteration > 1.0f) {
+        accumulatedRgba = kbuffs.accumulationBuffer[globalId] + accumulatedRgba;
     }
 
-    kls.kg.accumulation_buffer[kls.global_invocation_id] = accumulated_rgba;
-
-    kls.save_rng_seed();
+    kbuffs.accumulationBuffer[globalId] = accumulatedRgba;
+    kbuffs.rngSeedBuffer[globalId] = rnd.state;
 }
 
-extern "C" __global__ void post_processing_kernal(KernalGlobals kg) {
-    uint32_t global_id = blockDim.x * blockIdx.x + threadIdx.x;
-    if (global_id >= kg.pixel_count) {
+extern "C" __global__ void postProcessingKernal(KernalBuffers kbuffs) {
+    uint32_t globalId = blockDim.x * blockIdx.x + threadIdx.x;
+    if (globalId >= kbuffs.frameBuffer.len) {
         return;
     }
-
-    KernalLocalState kls(kg, make_uint2(constant_params.width, constant_params.height), global_id);
-
-    uint32_t fb_index = kls.global_invocation_id;
-
-    float4 rgba = kls.kg.accumulation_buffer[kls.global_invocation_id] / constant_params.current_iteration;
-    rgba.x = pow(rgba.x, constant_params.inverted_gamma);
-    rgba.y = pow(rgba.y, constant_params.inverted_gamma);
-    rgba.z = pow(rgba.z, constant_params.inverted_gamma);
+    
+    float4 rgba = kbuffs.accumulationBuffer[globalId] / constantParams.currentIteration;
+    rgba.x = pow(rgba.x, constantParams.invertedGamma);
+    rgba.y = pow(rgba.y, constantParams.invertedGamma);
+    rgba.z = pow(rgba.z, constantParams.invertedGamma);
     rgba = clamp(rgba, 0.0f, 1.0f);
 
-    if (constant_params.flip_y != 0) {
-        uint32_t y_flipped = constant_params.height - kls.xy.y - 1;
-        fb_index = constant_params.width * y_flipped + kls.xy.x;
+    uint32_t fbIndex = globalId;
+    if (constantParams.flipY != 0) {
+        uint2 globalXY = make_uint2(globalId % constantParams.width, globalId / constantParams.width);
+        uint32_t flippedY = constantParams.height - globalXY.y - 1;
+        fbIndex = constantParams.width * flippedY + globalXY.x;
     }
 
-    kls.kg.framebuffer[fb_index] = rgba;
-
-    kls.save_rng_seed();
+    kbuffs.frameBuffer[fbIndex] = rgba;
 }

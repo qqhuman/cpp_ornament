@@ -9,3 +9,4 @@ Todo
 3. Getters/Setters
 4. Public Api cleaning
 5. Check memory leaks
+6. pixel artifacts

@@ -2,7 +2,6 @@
 
 #include <hip/hip_runtime.h>
 
-#include "../GpuStructs.hpp"
 #include "../Scene.hpp"
 #include "buffers.hpp"
 
@@ -24,15 +23,15 @@ private:
     hipFunction_t m_postProcessingKernal;
     buffers::Target m_targetBuffer;
     buffers::Textures m_textures;
-    buffers::Global<gpu_structs::ConstantParams> m_constantParams;
-    buffers::Array<gpu_structs::Material> m_materials;
-    buffers::Array<gpu_structs::Normal> m_normals;
+    buffers::Global<kernals::ConstantParams> m_constantParams;
+    buffers::Array<kernals::Material> m_materials;
+    buffers::Array<float4> m_normals;
     buffers::Array<uint32_t> m_normalIndices;
-    buffers::Array<gpu_structs::Uv> m_uvs;
+    buffers::Array<float2> m_uvs;
     buffers::Array<uint32_t> m_uvIndices;
-    buffers::Array<gpu_structs::Transform> m_transforms;
-    buffers::Array<gpu_structs::BvhNode> m_tlasNodes;
-    buffers::Array<gpu_structs::BvhNode> m_blasNodes;
+    buffers::Array<float4x4> m_transforms;
+    buffers::Array<kernals::BvhNode> m_tlasNodes;
+    buffers::Array<kernals::BvhNode> m_blasNodes;
     void update();
     void launchKernal(hipFunction_t kernal);
 };

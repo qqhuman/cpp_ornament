@@ -1,6 +1,8 @@
-#include "Bvh.hpp"
 #include <random>
 #include <stdexcept>
+
+#include "Bvh.hpp"
+#include "global_structs_helper.hpp"
 
 namespace ornament {
 
@@ -122,7 +124,7 @@ void Bvh::build(const Scene& scene)
         }
     }
 
-    gpu_structs::BvhNode root = buildBvhTlasRecursive(leafs, 0, leafs.size());
+    kernals::BvhNode root = buildBvhTlasRecursive(leafs, 0, leafs.size());
     m_tlasNodes.push_back(root);
 }
 
@@ -152,36 +154,35 @@ void Bvh::buildMeshBvhRecursive(Mesh& mesh)
         m_normalIndices.push_back(ni + m_normals.size());
     }
 
-    for (glm::vec3 n : mesh.normals) {
-        m_normals.push_back(glm::vec4(n, 0.0f));
+    for (glm::vec3& n : mesh.normals) {
+        m_normals.push_back(make_float4(kernals::glmToHipFloat3(n), 0.0f));
     }
 
     for (uint32_t uvi : mesh.uvIndices) {
         m_uvIndices.push_back(uvi + m_uvs.size());
     }
 
-    m_uvs.insert(
-        m_uvs.end(),
-        mesh.uvs.begin(),
-        mesh.uvs.end());
+    for (glm::vec2& uv : mesh.uvs) {
+        m_uvs.push_back(make_float2(uv.x, uv.y));
+    }
 
-    gpu_structs::BvhNode root = buildBvhBlasRecursive(leafs, 0, leafs.size());
+    kernals::BvhNode root = buildBvhBlasRecursive(leafs, 0, leafs.size());
     m_blasNodes.push_back(root);
     mesh.bvhId = (uint32_t)(m_blasNodes.size() - 1);
 }
 
-gpu_structs::BvhNode Bvh::buildBvhBlasRecursive(std::vector<Triangle>& leafs, size_t start, size_t end)
+kernals::BvhNode Bvh::buildBvhBlasRecursive(std::vector<Triangle>& leafs, size_t start, size_t end)
 {
     size_t leafsSize = end - start;
     if (leafsSize == 0) {
         throw std::runtime_error("[ornament] mesh cannot be empty.");
     } else if (leafsSize == 1) {
         Triangle t = leafs[start];
-        gpu_structs::BvhNode node;
-        node.type = gpu_structs::TriangleType;
-        node.triangleNode.v0 = t.v0;
-        node.triangleNode.v1 = t.v1;
-        node.triangleNode.v2 = t.v2;
+        kernals::BvhNode node;
+        node.type = kernals::TriangleType;
+        node.triangleNode.v0 = kernals::glmToHipFloat3(t.v0);
+        node.triangleNode.v1 = kernals::glmToHipFloat3(t.v1);
+        node.triangleNode.v2 = kernals::glmToHipFloat3(t.v2);
         node.triangleNode.triangleId = t.triangleIndex;
         return node;
     } else {
@@ -194,29 +195,29 @@ gpu_structs::BvhNode Bvh::buildBvhBlasRecursive(std::vector<Triangle>& leafs, si
             });
 
         size_t mid = start + leafsSize / 2;
-        gpu_structs::BvhNode left = buildBvhBlasRecursive(leafs, start, mid);
+        kernals::BvhNode left = buildBvhBlasRecursive(leafs, start, mid);
         math::Aabb leftAabb = calculateBoundingBox(leafs, start, mid);
         m_blasNodes.push_back(left);
         uint32_t leftId = m_blasNodes.size() - 1;
 
-        gpu_structs::BvhNode right = buildBvhBlasRecursive(leafs, mid, end);
+        kernals::BvhNode right = buildBvhBlasRecursive(leafs, mid, end);
         math::Aabb rightAabb = calculateBoundingBox(leafs, mid, end);
         m_blasNodes.push_back(right);
         uint32_t rightId = m_blasNodes.size() - 1;
 
-        gpu_structs::BvhNode node;
-        node.type = gpu_structs::InternalNodeType;
-        node.internalNode.leftAabbMin = leftAabb.min();
+        kernals::BvhNode node;
+        node.type = kernals::InternalNodeType;
+        node.internalNode.leftAabbMin = kernals::glmToHipFloat3(leftAabb.min());
         node.internalNode.leftNodeId = leftId;
-        node.internalNode.leftAabbMax = leftAabb.max();
+        node.internalNode.leftAabbMax = kernals::glmToHipFloat3(leftAabb.max());
         node.internalNode.rightNodeId = rightId;
-        node.internalNode.rightAabbMin = rightAabb.min();
-        node.internalNode.rightAabbMax = rightAabb.max();
+        node.internalNode.rightAabbMin = kernals::glmToHipFloat3(rightAabb.min());
+        node.internalNode.rightAabbMax = kernals::glmToHipFloat3(rightAabb.max());
         return node;
     }
 }
 
-gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t start, size_t end)
+kernals::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t start, size_t end)
 {
     size_t leafsSize = end - start;
     if (leafsSize == 0) {
@@ -229,8 +230,8 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
             appendTransform(glm::inverse(obj->transform));
             appendTransform(obj->transform);
             uint32_t transformId = m_transforms.size() / 2 - 1;
-            gpu_structs::BvhNode node;
-            node.type = gpu_structs::SphereType;
+            kernals::BvhNode node;
+            node.type = kernals::SphereType;
             node.sphereNode.materialId = getMaterialIndex(*obj->material);
             node.sphereNode.transformId = transformId;
             return node;
@@ -240,8 +241,8 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
             appendTransform(glm::inverse(obj->transform));
             appendTransform(obj->transform);
             uint32_t transformId = m_transforms.size() / 2 - 1;
-            gpu_structs::BvhNode node;
-            node.type = gpu_structs::MeshType;
+            kernals::BvhNode node;
+            node.type = kernals::MeshType;
             node.meshNode.materialId = getMaterialIndex(*obj->material);
             node.meshNode.transformId = transformId;
             node.meshNode.blasNodeId = obj->bvhId.value();
@@ -252,8 +253,8 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
             appendTransform(glm::inverse(obj->transform));
             appendTransform(obj->transform);
             uint32_t transformId = m_transforms.size() / 2 - 1;
-            gpu_structs::BvhNode node;
-            node.type = gpu_structs::MeshType;
+            kernals::BvhNode node;
+            node.type = kernals::MeshType;
             node.meshNode.materialId = getMaterialIndex(*obj->material);
             node.meshNode.transformId = transformId;
             node.meshNode.blasNodeId = obj->mesh->bvhId.value();
@@ -273,31 +274,34 @@ gpu_structs::BvhNode Bvh::buildBvhTlasRecursive(std::vector<Leaf>& leafs, size_t
             });
 
         size_t mid = start + leafsSize / 2;
-        gpu_structs::BvhNode left = buildBvhTlasRecursive(leafs, start, mid);
+        kernals::BvhNode left = buildBvhTlasRecursive(leafs, start, mid);
         math::Aabb leftAabb = calculateBoundingBox(leafs, start, mid);
         m_tlasNodes.push_back(left);
         uint32_t leftId = m_tlasNodes.size() - 1;
 
-        gpu_structs::BvhNode right = buildBvhTlasRecursive(leafs, mid, end);
+        kernals::BvhNode right = buildBvhTlasRecursive(leafs, mid, end);
         math::Aabb rightAabb = calculateBoundingBox(leafs, mid, end);
         m_tlasNodes.push_back(right);
         uint32_t rightId = m_tlasNodes.size() - 1;
 
-        gpu_structs::BvhNode node;
-        node.type = gpu_structs::InternalNodeType;
-        node.internalNode.leftAabbMin = leftAabb.min();
+        kernals::BvhNode node;
+        node.type = kernals::InternalNodeType;
+        node.internalNode.leftAabbMin = kernals::glmToHipFloat3(leftAabb.min());
         node.internalNode.leftNodeId = leftId;
-        node.internalNode.leftAabbMax = leftAabb.max();
+        node.internalNode.leftAabbMax = kernals::glmToHipFloat3(leftAabb.max());
         node.internalNode.rightNodeId = rightId;
-        node.internalNode.rightAabbMin = rightAabb.min();
-        node.internalNode.rightAabbMax = rightAabb.max();
+        node.internalNode.rightAabbMin = kernals::glmToHipFloat3(rightAabb.min());
+        node.internalNode.rightAabbMax = kernals::glmToHipFloat3(rightAabb.max());
         return node;
     }
 }
 
 void Bvh::appendTransform(const glm::mat4& transform)
 {
-    m_transforms.push_back(glm::transpose(transform));
+    glm::mat4 transposedTransform = glm::transpose(transform);
+    float4x4 kernalTransform;
+    std::memcpy(&kernalTransform, &transposedTransform, sizeof(kernalTransform));
+    m_transforms.push_back(kernalTransform);
 }
 
 uint32_t Bvh::getMaterialIndex(Material& m)
@@ -311,23 +315,23 @@ uint32_t Bvh::getMaterialIndex(Material& m)
         m.albedo.texture->textureId = (uint32_t)(m_textures.size() - 1);
     }
 
-    m_materials.push_back(gpu_structs::Material(m));
+    m_materials.push_back(kernals::toKernalMaterial(m));
     uint32_t materialId = m_materials.size() - 1;
     m.materialId = materialId;
     return materialId;
 }
 
-const std::vector<gpu_structs::BvhNode>& Bvh::getTlasNodes() const noexcept
+const std::vector<kernals::BvhNode>& Bvh::getTlasNodes() const noexcept
 {
     return m_tlasNodes;
 }
 
-const std::vector<gpu_structs::BvhNode>& Bvh::getBlasNodes() const noexcept
+const std::vector<kernals::BvhNode>& Bvh::getBlasNodes() const noexcept
 {
     return m_blasNodes;
 }
 
-const std::vector<gpu_structs::Normal>& Bvh::getNormals() const noexcept
+const std::vector<float4>& Bvh::getNormals() const noexcept
 {
     return m_normals;
 }
@@ -337,7 +341,7 @@ const std::vector<uint32_t>& Bvh::getNormalIndices() const noexcept
     return m_normalIndices;
 }
 
-const std::vector<gpu_structs::Uv>& Bvh::getUvs() const noexcept
+const std::vector<float2>& Bvh::getUvs() const noexcept
 {
     return m_uvs;
 }
@@ -347,12 +351,12 @@ const std::vector<uint32_t>& Bvh::getUvIndices() const noexcept
     return m_uvIndices;
 }
 
-const std::vector<gpu_structs::Transform>& Bvh::getTransforms() const noexcept
+const std::vector<float4x4>& Bvh::getTransforms() const noexcept
 {
     return m_transforms;
 }
 
-const std::vector<gpu_structs::Material>& Bvh::getMaterials() const noexcept
+const std::vector<kernals::Material>& Bvh::getMaterials() const noexcept
 {
     return m_materials;
 }

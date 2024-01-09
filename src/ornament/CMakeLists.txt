@@ -33,7 +33,9 @@ endif()
 #     message(FATAL_ERROR "Could not find HIP. Ensure that HIP is either installed in /opt/rocm/hip or the variable HIP_PATH is set to point to the right location.")
 # endif()
 
-set(HEADERS 
+set(HEADERS
+    hip/kernals/global_structs.hip.hpp
+    global_structs_helper.hpp
     hip/buffers.hpp
     hip/hip_helper.hpp
     hip/PathTracer.hpp
@@ -41,7 +43,6 @@ set(HEADERS
     math/math.hpp
     math/transform.hpp
     Bvh.hpp
-    GpuStructs.hpp
     Camera.hpp
     ornament.hpp
     Scene.hpp
@@ -49,6 +50,7 @@ set(HEADERS
 )
 
 SET(SOURCES 
+global_structs_helper.cpp
     hip/PathTracer.cpp
     math/Aabb.cpp
     math/math.cpp

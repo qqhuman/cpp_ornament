@@ -1,23 +1,13 @@
 #pragma once
 
-#include "hip_helper.hpp"
 #include <algorithm>
-#include <glm/glm.hpp>
 #include <hip/hip_runtime.h>
 #include <stdexcept>
 
+#include "kernals/global_structs.hip.hpp"
+#include "hip_helper.hpp"
+
 namespace ornament::hip::buffers {
-
-template <typename T>
-struct HipArray {
-    hipDeviceptr_t dptr = nullptr;
-    uint32_t length = 0;
-
-    size_t sizeInBytes()
-    {
-        return length * sizeof(T);
-    }
-};
 
 template <typename T>
 class Array {
@@ -66,9 +56,9 @@ public:
         return *this;
     }
 
-    HipArray<T> getHipArray() const noexcept
+    kernals::Array<T> getHipArray() const noexcept
     {
-        return { .dptr = m_dptr, .length = m_length };
+        return { .ptr = (T*)m_dptr, .len = m_length };
     }
 
     Array(const Array&) = delete;
@@ -137,12 +127,12 @@ static std::vector<uint32_t> rngSeed(int size)
 class Target {
 public:
     Target() = default;
-    Target(const glm::uvec2& resolution)
+    Target(const uint2& resolution)
         : m_resolution(resolution)
         , m_pixelCount(resolution.x * resolution.y)
     {
-        m_buffer = Array<glm::vec4>(m_pixelCount);
-        m_accumulationBuffer = Array<glm::vec4>(m_pixelCount);
+        m_buffer = Array<float4>(m_pixelCount);
+        m_accumulationBuffer = Array<float4>(m_pixelCount);
         m_rngStateBuffer = Array(rngSeed(m_pixelCount));
 
         m_workgroups = m_pixelCount / workgroupSize;
@@ -169,12 +159,12 @@ public:
         return m_rngStateBuffer;
     }
 
-    const Array<glm::vec4>& getAccumelationBuffer() const noexcept
+    const Array<float4>& getAccumelationBuffer() const noexcept
     {
         return m_accumulationBuffer;
     }
 
-    const Array<glm::vec4>& getBuffer() const noexcept
+    const Array<float4>& getBuffer() const noexcept
     {
         return m_buffer;
     }
@@ -183,10 +173,10 @@ public:
     Target& operator=(const Target&) = delete;
 
 private:
-    Array<glm::vec4> m_buffer;
-    Array<glm::vec4> m_accumulationBuffer;
+    Array<float4> m_buffer;
+    Array<float4> m_accumulationBuffer;
     Array<uint32_t> m_rngStateBuffer;
-    glm::uvec2 m_resolution;
+    uint2 m_resolution;
     uint32_t m_workgroups;
     uint32_t m_pixelCount;
 };
@@ -249,7 +239,7 @@ public:
     Textures(Textures&& other) = default;
     Textures& operator=(Textures&& other) = default;
 
-    HipArray<hipTextureObject_t> getHipArray() const noexcept
+    kernals::Array<hipTextureObject_t> getHipArray() const noexcept
     {
         return m_deviceTextureObjects.getHipArray();
     }

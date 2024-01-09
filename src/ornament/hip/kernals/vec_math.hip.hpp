@@ -7,9 +7,16 @@
 #include <hiprt/hiprt_vec.h>
 #if !defined( __KERNELCC__ )
 #include <cmath>
-#endif
 
-#if !defined( __KERNELCC__ )
+inline float min(float a, float b) 
+{
+	return fmin(a, b);
+}
+
+inline float max(float a, float b) 
+{
+	return max(a, b);
+}
 
 #define int2 hiprtInt2
 #define int3 hiprtInt3
