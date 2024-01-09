@@ -12,13 +12,11 @@ if(NOT HIP_HIPCC_EXECUTABLE)
 endif()
 
 set(HEADERS 
-    array.hip.hpp
     bvh.hip.hpp
     camera.hip.hpp
     common.hip.hpp
-    constant_params.hip.hpp
+    global_structs.hip.hpp
     hitrecord.hip.hpp
-    kernal_params.hip.hpp
     material.hip.hpp
     random.hip.hpp
     ray.hip.hpp
@@ -27,7 +25,7 @@ set(HEADERS
 )
 
 SET(SOURCES 
-    pathtracer.hip.cpp
+    main.hip.cpp
 )
 
 # set(ORNAMENT_HIP_BINARIES_ARCH gfx900 gfx90c gfx902 gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "AMD HIP architectures to build binaries for")
